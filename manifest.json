@@ -1,0 +1,9 @@
+{
+    "name": "Hover Quote",
+    "author": "玉元一",
+    "description": "Displays a card with a random character quote when hovering between messages.",
+    "version": "1.0.0",
+    "tags": ["UI", "Animation", "Interaction"],
+    "css": ["style.css"],
+    "js": ["script.js"]
+}

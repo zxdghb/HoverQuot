@@ -1,0 +1,65 @@
+/* Hover Quote Extension - style.css */
+
+/* 1. 为消息框提供定位基准和足够空间 */
+div.mes {
+    position: relative;
+    margin-bottom: 80px !important;
+}
+
+/* 2. 初始状态的“提示图标” (由JS创建) */
+.hover-quote-trigger {
+    content: '💭';
+    position: absolute;
+    bottom: -55px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 40px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 2;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 3. 悬停后出现的“语录卡片” (由JS创建) */
+.hover-quote-card {
+    position: absolute;
+    bottom: -70px;
+    left: 50%;
+    width: 280px;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 15px 20px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    color: #333;
+    font-family: 'Noto Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: left;
+    white-space: pre-wrap;
+    z-index: 1;
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 4. 悬停时的动画效果 */
+/* JS会通过添加/移除 .hovered class来控制这些效果 */
+.hover-quote-trigger.hovered {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+}
+
+.hover-quote-card.hovered {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: all;
+}
