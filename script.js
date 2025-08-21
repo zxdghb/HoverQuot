@@ -1,120 +1,105 @@
-/* Hover Quote Extension - script.js (v1.1.1 - Polling Guard Version) */
-
-(function() {
-    // 哨兵函数：持续检查SillyTavern核心是否准备就绪
-    function waitForSillyTavern() {
-        // 检查核心变量和DOM元素是否存在
-        if (typeof window.characters !== 'undefined' && 
-            typeof window.currently_selected_character !== 'undefined' && 
-            document.getElementById('chat') &&
-            document.querySelector('.mes')) { // 增加检查，确保至少有一个消息框已渲染
-            
-            console.log("HoverQuote: SillyTavern core is ready. Initializing main logic.");
-            mainLogic();
-        } else {
-            // 如果还没准备好，100毫秒后再检查一次
-            console.log("HoverQuote: Waiting for SillyTavern core...");
-            setTimeout(waitForSillyTavern, 100);
+(function () {
+    // 扩展的核心类
+    class MemoryBubbleExtension extends TavernExtension {
+        constructor() {
+            super('memory-bubble');
         }
-    }
 
-    // 页面加载完成后，启动哨兵
-    document.addEventListener('DOMContentLoaded', waitForSillyTavern);
+        // 初始化扩展
+        onInit() {
+            console.log("聊天气泡回忆扩展已加载。");
+            // 监听消息渲染事件，每次有新消息或聊天加载时都会触发
+            this.eventSource.on('message-rendered', this.onMessageRendered.bind(this));
+            // 聊天加载完成时也触发一次，确保初始加载时有气泡
+            this.eventSource.on('chat-loaded', this.onMessageRendered.bind(this));
+        }
 
-    function mainLogic() {
-        try {
-            let quoteCache = {};
-            const chatElement = document.getElementById('chat');
+        // 当消息被渲染到屏幕上时执行
+        onMessageRendered() {
+            // 为防止重复，先移除所有已存在的气泡
+            document.querySelectorAll('.memory-bubble-container').forEach(el => el.remove());
 
-            function extractSentences(text) {
-                if (!text || typeof text !== 'string') return [];
-                const sentences = text.match(/[^.!?…~]+[.!?…~]+["]?/g) || [];
-                return sentences
-                    .map(s => s.trim().replace(/^"|"$/g, ''))
-                    .filter(s => s.length > 10 && s.length < 150);
-            }
+            // 获取聊天区域的所有消息
+            const messages = document.querySelectorAll('#chat .mes');
 
-            function getQuotesForCurrentChar() {
-                try {
-                    const charId = window.currently_selected_character;
-                    if (!charId) return [];
-                    if (quoteCache[charId]) return quoteCache[charId];
-                    
-                    const character = window.characters[charId];
-                    if (!character) return [];
-
-                    let quotes = [];
-                    quotes = quotes.concat(extractSentences(character.description));
-                    quotes = quotes.concat(extractSentences(character.mes_example));
-
-                    if (quotes.length === 0) {
-                        quotes = [ "...", "嗯？", "我在想一些事情。", "你有什么想说的吗？" ];
-                    }
-                    
-                    quoteCache[charId] = quotes;
-                    return quotes;
-                } catch (error) {
-                    console.error("HoverQuote error in getQuotesForCurrentChar:", error);
-                    return [ "Error fetching quotes." ];
+            messages.forEach((msg, index) => {
+                // 我们只在角色消息后添加气泡，并且不是最后一条消息
+                const isCharacterMessage = !msg.classList.contains('is_user');
+                if (isCharacterMessage && index < messages.length - 1) {
+                    this.injectBubbleAfter(msg);
                 }
-            }
-
-            const getRandomQuote = () => {
-                const quotes = getQuotesForCurrentChar();
-                if (!quotes || quotes.length === 0) return '"..."';
-                return `"${quotes[Math.floor(Math.random() * quotes.length)]}"`;
-            };
-
-            function createHoverElement(parent) {
-                if (parent.querySelector('.hover-quote-trigger')) return;
-
-                const trigger = document.createElement('div');
-                trigger.className = 'hover-quote-trigger';
-                trigger.textContent = '💭';
-
-                const card = document.createElement('div');
-                card.className = 'hover-quote-card';
-
-                parent.addEventListener('mouseenter', () => {
-                    card.textContent = getRandomQuote();
-                    trigger.classList.add('hovered');
-                    card.classList.add('hovered');
-                });
-
-                parent.addEventListener('mouseleave', () => {
-                    trigger.classList.remove('hovered');
-                    card.classList.remove('hovered');
-                });
-                
-                parent.appendChild(trigger);
-                parent.appendChild(card);
-            }
-
-            // 初始化时为已存在的消息添加气泡
-            document.querySelectorAll('#chat .mes:not(:last-child)').forEach(createHoverElement);
-
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach((mutation) => {
-                    if (mutation.addedNodes.length > 0) {
-                        mutation.addedNodes.forEach(node => {
-                            if (node.nodeType === 1 && node.classList.contains('mes')) {
-                                const prevMessage = node.previousElementSibling;
-                                if (prevMessage && prevMessage.classList.contains('mes')) {
-                                    createHoverElement(prevMessage);
-                                }
-                            }
-                        });
-                    }
-                });
             });
-            observer.observe(chatElement, { childList: true });
-            
-            document.body.addEventListener('char_changed', () => { quoteCache = {}; });
 
-            console.log("💬 Hover Quote extension (v1.1.1) initialized successfully!");
+            // 为所有新创建的气泡添加事件监听器
+            this.addBubbleEventListeners();
+        }
 
-        } catch (error) {
-            console.error("HoverQuote critical error in mainLogic:", error);
+        // 在指定消息元素后注入气泡
+        injectBubbleAfter(messageElement) {
+            const bubbleContainer = document.createElement('div');
+            bubbleContainer.className = 'memory-bubble-container';
+            bubbleContainer.innerHTML = `
+                <div class="memory-bubble">
+                    <span class="bubble-text"></span>
+                </div>
+            `;
+            // 将气泡容器插入到消息元素的后面
+            messageElement.parentNode.insertBefore(bubbleContainer, messageElement.nextSibling);
+        }
+
+        // 为所有气泡添加鼠标事件
+        addBubbleEventListeners() {
+            const bubbles = document.querySelectorAll('.memory-bubble');
+            bubbles.forEach(bubble => {
+                bubble.addEventListener('mouseover', this.onBubbleHover.bind(this));
+                bubble.addEventListener('mouseout', this.onBubbleMouseOut.bind(this));
+            });
+        }
+        
+        // 鼠标悬停事件处理
+        onBubbleHover(event) {
+            const bubble = event.currentTarget;
+            const bubbleTextElement = bubble.querySelector('.bubble-text');
+
+            // 1. 获取所有角色的消息内容
+            const characterMessages = Array.from(document.querySelectorAll('#chat .mes:not(.is_user) .mes_text'))
+                .map(el => el.textContent.trim())
+                .filter(text => text.length > 0);
+
+            if (characterMessages.length === 0) {
+                bubbleTextElement.textContent = "（还没有足够的回忆...）";
+                return;
+            }
+
+            // 2. 将消息内容分割成句子
+            const sentences = [];
+            characterMessages.forEach(msg => {
+                // 使用中英文标点符号分割句子
+                const msgSentences = msg.split(/[.!?。！？\n]+/).filter(s => s.trim().length > 5); // 过滤掉太短的片段
+                sentences.push(...msgSentences);
+            });
+
+            if (sentences.length === 0) {
+                bubbleTextElement.textContent = "（回忆都是些片段...）";
+                return;
+            }
+
+            // 3. 随机选择一个句子
+            const randomSentence = sentences[Math.floor(Math.random() * sentences.length)].trim();
+
+            // 4. 显示句子
+            bubbleTextElement.textContent = `“${randomSentence}”`;
+        }
+
+        // 鼠标移出事件处理
+        onBubbleMouseOut(event) {
+            const bubble = event.currentTarget;
+            const bubbleTextElement = bubble.querySelector('.bubble-text');
+            // 清空文字，CSS动画会让它平滑消失
+            bubbleTextElement.textContent = '';
         }
     }
+
+    // 注册扩展
+    Tavern.registerExtension(new MemoryBubbleExtension());
 })();
