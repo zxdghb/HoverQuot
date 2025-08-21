@@ -1,67 +1,63 @@
-/* Hover Quote Extension - script.js */
+/* Hover Quote Extension - script.js (v1.0.1 - Robustness Fix) */
 (function() {
-    // 确保在SillyTavern完全加载后再执行
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        initHoverQuote();
-    } else {
-        document.addEventListener('DOMContentLoaded', initHoverQuote);
-    }
+    // 使用更可靠的事件监听器来确保SillyTavern完全加载
+    document.addEventListener('DOMContentLoaded', initHoverQuote);
 
     function initHoverQuote() {
-        let quoteCache = {}; // 缓存每个角色的语录
-        const chatElement = document.getElementById('chat');
-        if (!chatElement) return;
-
-        // 从文本中提取句子的函数
-        function extractSentences(text) {
-            if (!text) return [];
-            // 使用正则表达式匹配句子，并进行清理
-            const sentences = text.match(/[^.!?]+[.!?]+["]?/g) || [];
-            return sentences
-                .map(s => s.trim().replace(/^"|"$/g, '')) // 去除首尾空格和引号
-                .filter(s => s.length > 10 && s.length < 150); // 筛选长度合适的句子
+        // 确保核心变量已定义
+        if (typeof characters === 'undefined' || typeof currently_selected_character === 'undefined') {
+            // 如果核心变量还没准备好，稍等一下再试
+            setTimeout(initHoverQuote, 200);
+            return;
         }
 
-        // 获取当前角色的语录库
+        let quoteCache = {};
+        const chatElement = document.getElementById('chat');
+        if (!chatElement) {
+            console.error("HoverQuote Error: #chat element not found.");
+            return;
+        }
+
+        function extractSentences(text) {
+            if (!text || typeof text !== 'string') return [];
+            const sentences = text.match(/[^.!?…~]+[.!?…~]+["]?/g) || [];
+            return sentences
+                .map(s => s.trim().replace(/^"|"$/g, ''))
+                .filter(s => s.length > 10 && s.length < 150);
+        }
+
         function getQuotesForCurrentChar() {
-            const charId = currently_selected_character;
-            if (quoteCache[charId]) {
+            // 确保 currently_selected_character 是一个有效的 key
+            const charId = window.currently_selected_character;
+            if (!charId) return [];
+
+            if (quoteCache[charId] && quoteCache[charId].length > 0) {
                 return quoteCache[charId];
             }
 
-            const character = characters[charId];
+            const character = window.characters[charId];
             if (!character) return [];
 
             let quotes = [];
-            // 从角色描述中提取
             quotes = quotes.concat(extractSentences(character.description));
-            // 从对话示例中提取
             quotes = quotes.concat(extractSentences(character.mes_example));
 
-            // 如果提取不到，提供一些默认的句子
             if (quotes.length === 0) {
-                quotes = [
-                    "...",
-                    "嗯？",
-                    "我在想一些事情。",
-                    "你有什么想说的吗？"
-                ];
+                quotes = [ "...", "嗯？", "我在想一些事情。", "你有什么想说的吗？" ];
             }
             
-            quoteCache[charId] = quotes; // 缓存结果
+            quoteCache[charId] = quotes;
             return quotes;
         }
 
-        // 获取一个随机语录
         const getRandomQuote = () => {
             const quotes = getQuotesForCurrentChar();
-            if (quotes.length === 0) return "...";
+            if (quotes.length === 0) return '"..."';
             return `"${quotes[Math.floor(Math.random() * quotes.length)]}"`;
         };
 
-        // 创建卡片和触发器的函数
         function createHoverElement(parent) {
-            if (parent.querySelector('.hover-quote-trigger')) return; // 防止重复添加
+            if (parent.querySelector('.hover-quote-trigger')) return;
 
             const trigger = document.createElement('div');
             trigger.className = 'hover-quote-trigger';
@@ -70,14 +66,12 @@
             const card = document.createElement('div');
             card.className = 'hover-quote-card';
 
-            // 鼠标悬停事件
             parent.addEventListener('mouseenter', () => {
-                card.textContent = getRandomQuote(); // ★ 每次悬停时都获取一句新的随机语录
+                card.textContent = getRandomQuote();
                 trigger.classList.add('hovered');
                 card.classList.add('hovered');
             });
 
-            // 鼠标离开事件
             parent.addEventListener('mouseleave', () => {
                 trigger.classList.remove('hovered');
                 card.classList.remove('hovered');
@@ -87,7 +81,7 @@
             parent.appendChild(card);
         }
 
-        // 监听新消息的生成
+        // 使用 MutationObserver 监听新消息
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.addedNodes.length > 0) {
@@ -102,14 +96,15 @@
                 }
             });
         });
-
         observer.observe(chatElement, { childList: true });
-        
-        // 当切换角色时，清空语录缓存
-        $(document).on('char_changed', () => {
-            quoteCache = {};
-        });
 
-        console.log("💬 Hover Quote extension loaded successfully!");
+        // ★ 使用原生事件监听器替代jQuery来处理角色切换
+        function handleCharChange() {
+            quoteCache = {}; // 清空缓存
+            console.log("HoverQuote: Character changed, cache cleared.");
+        }
+        document.body.addEventListener('char_changed', handleCharChange);
+        
+        console.log("💬 Hover Quote extension (v1.0.1) loaded successfully!");
     }
 })();
