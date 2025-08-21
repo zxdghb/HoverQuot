@@ -1,6 +1,53 @@
-/* Hover Quote Extension - style.css */
-div.mes { position: relative; margin-bottom: 80px !important; }
-.hover-quote-trigger { content: '💭'; position: absolute; bottom: -55px; left: 50%; transform: translateX(-50%); width: 40px; height: 40px; background-color: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 50%; font-size: 20px; color: rgba(255, 255, 255, 0.7); display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 2; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-.hover-quote-card { position: absolute; bottom: -70px; left: 50%; width: 280px; background-color: rgba(255, 255, 255, 0.95); border-radius: 12px; padding: 15px 20px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); color: #333; font-family: 'Noto Sans', sans-serif; font-size: 14px; line-height: 1.5; text-align: left; white-space: pre-wrap; z-index: 1; opacity: 0; transform: translateX(-50%) translateY(10px); pointer-events: none; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-.hover-quote-trigger.hovered { opacity: 0; transform: translateX(-50%) translateY(-10px); }
-.hover-quote-card.hovered { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: all; }
+/* 聊天气泡回忆 (Chat Bubble Memories) 样式 */
+
+/* 整体容器，用于定位 */
+.memory-bubble-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 30px; /* 给气泡留出空间 */
+    margin: 5px 0;
+}
+
+/* 气泡本身 */
+.memory-bubble {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    background-color: rgba(135, 206, 250, 0.4); /* 淡蓝色，半透明 */
+    border-radius: 50%; /* 初始为圆形 */
+    border: 1px solid rgba(135, 206, 250, 0.7);
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* 带有回弹效果的动画 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* 隐藏内部文字 */
+    box-shadow: 0 0 5px rgba(135, 206, 250, 0.5);
+}
+
+/* 鼠标悬停时的气泡样式 */
+.memory-bubble:hover {
+    width: auto; /* 宽度自动适应内容 */
+    max-width: 400px; /* 最大宽度，防止句子太长 */
+    min-width: 100px; /* 最小宽度 */
+    height: 30px;
+    border-radius: 15px; /* 变成胶囊形状 */
+    background-color: rgba(135, 206, 250, 0.7);
+    padding: 0 15px; /* 左右留出内边距 */
+}
+
+/* 气泡内部的文字 */
+.bubble-text {
+    opacity: 0; /* 默认隐藏 */
+    color: white;
+    font-size: 14px;
+    white-space: nowrap; /* 确保文字在一行显示 */
+    transition: opacity 0.3s ease 0.2s; /* 延迟0.2秒出现，效果更好 */
+}
+
+/* 当鼠标悬停在气泡上时，显示文字 */
+.memory-bubble:hover .bubble-text {
+    opacity: 1;
+}
+
