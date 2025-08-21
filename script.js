@@ -1,22 +1,32 @@
-/* Hover Quote Extension - script.js (v1.0.1 - Robustness Fix) */
+/* Hover Quote Extension - script.js (v1.1.0 - Final Safe Version) */
+
 (function() {
-    // 使用更可靠的事件监听器来确保SillyTavern完全加载
-    document.addEventListener('DOMContentLoaded', initHoverQuote);
+    // 确保在SillyTavern完全加载后再执行
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        initHoverQuote();
+    } else {
+        document.addEventListener('DOMContentLoaded', initHoverQuote);
+    }
 
     function initHoverQuote() {
-        // 确保核心变量已定义
-        if (typeof characters === 'undefined' || typeof currently_selected_character === 'undefined') {
-            // 如果核心变量还没准备好，稍等一下再试
-            setTimeout(initHoverQuote, 200);
-            return;
+        // 使用 try...catch 来捕获任何可能的初始化错误
+        try {
+            // 延迟执行，等待SillyTavern的核心变量完全准备好
+            setTimeout(() => {
+                if (typeof characters === 'undefined' || typeof currently_selected_character === 'undefined' || !document.getElementById('chat')) {
+                    console.error("HoverQuote Error: SillyTavern core is not ready. Aborting.");
+                    return;
+                }
+                mainLogic();
+            }, 1000); // 延迟1秒，确保万无一失
+        } catch (error) {
+            console.error("HoverQuote critical error during init:", error);
         }
+    }
 
+    function mainLogic() {
         let quoteCache = {};
         const chatElement = document.getElementById('chat');
-        if (!chatElement) {
-            console.error("HoverQuote Error: #chat element not found.");
-            return;
-        }
 
         function extractSentences(text) {
             if (!text || typeof text !== 'string') return [];
@@ -27,32 +37,33 @@
         }
 
         function getQuotesForCurrentChar() {
-            // 确保 currently_selected_character 是一个有效的 key
-            const charId = window.currently_selected_character;
-            if (!charId) return [];
+            try {
+                const charId = window.currently_selected_character;
+                if (!charId) return [];
+                if (quoteCache[charId]) return quoteCache[charId];
+                
+                const character = window.characters[charId];
+                if (!character) return [];
 
-            if (quoteCache[charId] && quoteCache[charId].length > 0) {
-                return quoteCache[charId];
+                let quotes = [];
+                quotes = quotes.concat(extractSentences(character.description));
+                quotes = quotes.concat(extractSentences(character.mes_example));
+
+                if (quotes.length === 0) {
+                    quotes = [ "...", "嗯？", "我在想一些事情。", "你有什么想说的吗？" ];
+                }
+                
+                quoteCache[charId] = quotes;
+                return quotes;
+            } catch (error) {
+                console.error("HoverQuote error in getQuotesForCurrentChar:", error);
+                return [ "Error fetching quotes." ]; // 返回错误提示
             }
-
-            const character = window.characters[charId];
-            if (!character) return [];
-
-            let quotes = [];
-            quotes = quotes.concat(extractSentences(character.description));
-            quotes = quotes.concat(extractSentences(character.mes_example));
-
-            if (quotes.length === 0) {
-                quotes = [ "...", "嗯？", "我在想一些事情。", "你有什么想说的吗？" ];
-            }
-            
-            quoteCache[charId] = quotes;
-            return quotes;
         }
 
         const getRandomQuote = () => {
             const quotes = getQuotesForCurrentChar();
-            if (quotes.length === 0) return '"..."';
+            if (!quotes || quotes.length === 0) return '"..."';
             return `"${quotes[Math.floor(Math.random() * quotes.length)]}"`;
         };
 
@@ -81,7 +92,6 @@
             parent.appendChild(card);
         }
 
-        // 使用 MutationObserver 监听新消息
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.addedNodes.length > 0) {
@@ -97,14 +107,10 @@
             });
         });
         observer.observe(chatElement, { childList: true });
-
-        // ★ 使用原生事件监听器替代jQuery来处理角色切换
-        function handleCharChange() {
-            quoteCache = {}; // 清空缓存
-            console.log("HoverQuote: Character changed, cache cleared.");
-        }
-        document.body.addEventListener('char_changed', handleCharChange);
         
-        console.log("💬 Hover Quote extension (v1.0.1) loaded successfully!");
+        // 监听角色切换事件
+        document.body.addEventListener('char_changed', () => { quoteCache = {}; });
+
+        console.log("💬 Hover Quote extension (v1.1.0) loaded successfully!");
     }
 })();
